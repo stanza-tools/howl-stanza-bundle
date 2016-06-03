@@ -33,5 +33,9 @@
 
   structure: (editor) =>
     [l for l in *editor.buffer.lines when l\match('^%s*.-%s*defn%s') or
-      l\match('^%s*.-%s*defstruct.-:') or l\match('^%s*.-%s*deftype.-:')]
+      l\match('^%s*.-%s*defstruct%s') or
+      l\match('^%s*.-%s*deftype%s') or
+      l\match('^%s*.-%s*defmethod%s') or
+      l\match('^%s*.-%s*defpackage%s') or
+      l\match('^%s*.-%s*defmulti%s')]
 }
