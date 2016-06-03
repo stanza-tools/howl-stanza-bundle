@@ -112,7 +112,7 @@ howl.aux.lpeg_lexer ->
       constant,
       lotypes,
       uniqtypes,
-      operator
+      operator,
       identifier,
     }
 
@@ -132,7 +132,19 @@ howl.aux.lpeg_lexer ->
 
     deref: sequence {
       c('special', B(eol + blank) * '['),
-      V'all',
+      any({
+        ws,
+        V'string',
+        V'deref',
+        char,
+        number,
+        wordop,
+        keyword,
+        functions,
+        constant,
+        operator,
+        identifier
+      })^1,
       c('special', ']')
     }
 
