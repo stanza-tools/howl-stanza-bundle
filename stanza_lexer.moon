@@ -16,8 +16,8 @@ howl.aux.lpeg_lexer ->
 
   identifier = c 'identifier', ident
 
-  fdecl = c('keyword', word { 'defn', 'defmulti', 'defmethod' }) *
-    (c 'operator', '*')^0 * ws^1 * c('type_def', ident) * ws^1
+  fdecl = c('keyword', word { 'defn', 'defmulti', 'defmethod' }) * (c 'operator', '*')^0 * ws^1 *
+    c('type_def', ident) * (ws^1 + #P'<')
   decl = c('keyword', word {'defstruct', 'defpackage', 'deftype'}) * ws^1 * c('label', ident)
 
   keyword = c 'keyword', word {
@@ -31,7 +31,7 @@ howl.aux.lpeg_lexer ->
     'val', 'var', 'label', 'let', 'let-var', 'new'
   }
 
-  functions = c 'function', word {
+  functions = c 'function', word({
     'not-equal', 'not-equal?', 'equal', 'equal?', 'compare',
     'less?', 'less-eq?', 'greater?', 'greater-eq?', 'to-seq',
     'maximum', 'max', 'minimum', 'min', 'hash', 'length', 'push',
@@ -67,7 +67,7 @@ howl.aux.lpeg_lexer ->
     'sinh', 'cosh', 'tanh', 'ceil', 'floor', 'round', 'to-radians', 'to-degrees',
     'to-vector', 'pop', 'peek', 'remove-item', 'remove-when', 'remove', 'update', 'shorten',
     'lengthen', 'default?', 'read-file', 'read-all', 'read', 'tagged-list?'
-  }
+  }) * #S'({'
 
   constant = c 'constant', word { 'true', 'false', 'this' }
 
@@ -114,7 +114,7 @@ howl.aux.lpeg_lexer ->
       lotypes,
       uniqtypes,
       operator,
-      identifier,
+      identifier
     }
 
     string: sequence {
@@ -133,7 +133,7 @@ howl.aux.lpeg_lexer ->
 
     deref: sequence {
       c('blue', B(eol + blank) * '['),
-      any({ ws, V'all' })^1,
+      any({ ws, V'all', S'()' })^1,
       c('blue', ']')
     }
 
