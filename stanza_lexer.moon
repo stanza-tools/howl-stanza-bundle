@@ -88,7 +88,7 @@ howl.aux.lpeg_lexer ->
 
   comment = c 'comment', P';' * scan_until eol
 
-  number = c 'number', digit * scan_until(ws + S'()[]{}' + operator)
+  number = c 'number', digit * scan_until(ws + S'()[]{}' + operator + eol)
 
   char = c 'char', P"'" * (P'\\' * P(1) + P(1)) * P"'"
 
@@ -99,6 +99,7 @@ howl.aux.lpeg_lexer ->
       comment,
       V'string',
       V'deref',
+      V'fndel',
       char,
       number,
       declarator,
@@ -131,21 +132,19 @@ howl.aux.lpeg_lexer ->
     interpolation: c 'operator', P'%' * S'_*,~@%'
 
     deref: sequence {
-      c('special', B(eol + blank) * '['),
+      c('blue', B(eol + blank) * '['),
+      any({ ws, V'all' })^1,
+      c('blue', ']')
+    }
+
+    fndel: sequence {
+      c('fdecl', '{'),
       any({
         ws,
-        V'string',
-        V'deref',
-        char,
-        number,
-        wordop,
-        keyword,
-        functions,
-        constant,
-        operator,
-        identifier
+        c('constant', P'_'),
+        V'all',
       })^1,
-      c('special', ']')
+      c('fdecl', '}')
     }
 
   }
