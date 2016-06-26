@@ -1,5 +1,15 @@
+; these params and return types will also have the same sublexing
+extern glfwInit: () -> int
+
+; ref indicates that a type is HiStanza and lostanza functions can
+; act as bridges between wrapped C functions and HiStanza code
 lostanza defn init () -> ref<False|True> :
-   var result:int =
-   call-c glfwInit()
+   var result:int = call-c glfwInit()
 
    return result == 0
+
+defn separate-func () :
+   ; here be other code
+   val i = 1
+   ; return is only available in lostanza
+   ; in histanza, returning happens via last expression or labels
