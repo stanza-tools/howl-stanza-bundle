@@ -1,0 +1,5 @@
+lostanza defn init () -> ref<False|True> :
+   var result:int =
+   call-c glfwInit()
+
+   return result == 0
