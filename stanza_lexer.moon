@@ -1,6 +1,39 @@
 -- Copyright 2016 Jake Russo
 -- License: MIT
 
+sub_lex_capture = (subject, cur_pos, mode_name, sub_text) ->
+  sub_start_pos = cur_pos - #sub_text
+  m = mode.by_name mode_name
+  sub_text, sub_start_pos, ret = sub_lex_capture_start sub_text, sub_start_pos, cur_pos
+  append ret, sub_start_pos
+
+  if not m or not m.lexer
+    append ret, 'embedded'
+    append ret, cur_pos
+  else
+    append ret, m.lexer(sub_text, nil, sub_lexing: true)
+    append ret, "#{mode_name}|embedded"
+
+  unpack ret
+
+pattern_sub_lex_capture = (subject, cur_pos, mode_name, mode_style, sub_text) ->
+  real_sub_start_pos = cur_pos - #sub_text
+  start_pos = real_sub_start_pos - #mode_name
+  m = mode.by_name mode_name
+  sub_text, sub_start_pos, ret = sub_lex_capture_start sub_text, real_sub_start_pos, cur_pos
+
+  tinsert ret, 2, real_sub_start_pos
+  tinsert ret, 2, mode_style
+  tinsert ret, 2, start_pos
+
+  append ret, sub_start_pos
+
+  if not m or not m.lexer
+    append ret, 'embedded'
+    append ret, cur_pos
+  else
+    append ret, m.lexer(sub_text, nil, sub_lexing: true)
+    append ret, "#{mode_name}|embedded"
 
 howl.aux.lpeg_lexer ->
 
@@ -24,7 +57,7 @@ howl.aux.lpeg_lexer ->
     'if', 'else', 'when', 'switch', 'match', 'let', 'let-var',
    'where', 'for', 'while', 'label', 'yield', 'try', 'catch',
    'finally', 'throw', 'attempt', 'fn', 'fn*', 'multifn', 'multifn*',
-   'qquote', 'return', 'call-c', 'val', 'var', 'import', 'with'
+   'qquote', 'val', 'var', 'import', 'with'
   }
 
   declarator = c 'member', word {
@@ -71,13 +104,9 @@ howl.aux.lpeg_lexer ->
 
   constant = c 'constant', word { 'true', 'false', 'this' }
 
-  lotypes = c 'type', upper * ident_filler
+  types = c 'type', upper * ident_filler
 
-  uniqtypes = c 'special', (word { 'ref', 'ptr' }) + (-B'%w' * '?')
-
-  lostanza = c 'type', word { 'byte', 'int', 'long', 'float', 'double' }
-
-  modifier = c 'special', word { 'public', 'protected', 'extern', 'lostanza' }
+  modifier = c 'special', word { 'public', 'protected', 'extern' }
 
   wordop = c 'operator', word {
     'to', 'through', 'by', 'in', 'and', 'or', 'not',
@@ -92,6 +121,52 @@ howl.aux.lpeg_lexer ->
 
   char = c 'char', P"'" * (P'\\' * P(1) + P(1)) * P"'"
 
+  unknown = c 'special', -B'%w' * '?'
+
+  lotypes = c 'type', word { 'byte', 'int', 'long', 'float', 'double' }
+
+  ref = c('keyword', P'ref') * P'<' * any({
+    ws, types, c('operator', S'|&' + P'->')
+  })^1 * P'>'
+
+  ptr = c('keyword', P'ptr') * P'<' * any({
+    ws, types, unknown, lotypes, c('operator', S'|&' + P'->')
+  })^1 * P'>'
+
+  lokeyword = c 'keyword', word { 'return', 'call-c' }
+
+  lofuncs = c 'function', word({ 'addr!', 'addr', }) * #S'({'
+
+  loparams = any {
+    lotypes, ref, ptr, types
+  }
+
+  lobody = any {
+    comment,
+    V'string',
+    V'deref',
+    V'fndel',
+    char,
+    number,
+    declarator,
+    wordop,
+    modifier,
+    ref,
+    ptr,
+    fdecl,
+    decl,
+    keyword,
+    lokeyword,
+    functions,
+    lofuncs,
+    constant,
+    types,
+    lotypes,
+    unknown,
+    operator,
+    identifier
+  }
+
   P {
     'all'
 
@@ -104,15 +179,15 @@ howl.aux.lpeg_lexer ->
       number,
       declarator,
       wordop,
-      lostanza,
+      V'lostanza',
       modifier,
       fdecl,
       decl,
       keyword,
       functions,
       constant,
-      lotypes,
-      uniqtypes,
+      types,
+      unknown,
       operator,
       identifier
     }
@@ -132,9 +207,9 @@ howl.aux.lpeg_lexer ->
     interpolation: c 'operator', P'%' * S'_*,~@%'
 
     deref: sequence {
-      c('blue', B(eol + blank) * '['),
+      c('member', B(eol + blank) * '['),
       any({ ws, V'all', S'()' })^1,
-      c('blue', ']')
+      c('member', ']')
     }
 
     fndel: sequence {
@@ -145,6 +220,22 @@ howl.aux.lpeg_lexer ->
         V'all',
       })^1,
       c('fdecl', '}')
+    }
+
+    lostanza: sequence {
+      c('special', P'lostanza'), ws^1,
+      c('keyword', P'defn'), ws^1,
+      c('fdecl', ident), ws^1,
+      P'(', sub_lex_by_inline('embedded', ')', loparams), P')', ws^1,
+      c('operator', P'->'), ws^1, sub_lex_by_inline('embedded', ' :', loparams), ws^1,
+      c('operator', P':'),
+      -- Here's where I want to use lobody to provide special syntax/keywords and
+      -- also use embedded coloring to help signify to the users that you are in a separate
+      -- sub-language from Stanza
+
+      -- sub_lex_by_pattern(lobody^1, 'embedded', scan_through_indented!)
+      Cmt(C(any({ws, lobody})^1) * C(scan_through_indented!), sub_lex_capture)
+      -- sub_lex_match_time('embedded', scan_through_indented!)
     }
 
   }

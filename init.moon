@@ -1,21 +1,22 @@
 -- Copyright 2016 Jake Russo
 -- License: MIT
 
-howl.mode.register
+mode_reg =
   name: 'stanza'
   extensions: {
     'stz,'
     'stanza'
   }
-  -- shebangs: '[/ ]stanza.*$'
-  create: -> bundle_load 'stanza_mode'
+  create: -> bundle_load('stanza_mode')
+
+howl.mode.register mode_reg
 
 unload = -> howl.mode.unregister 'stanza'
 
 {
   info:
-    author: 'The Howl Developers'
-    description: 'A Stanza bundle',
+    author: 'Jake Russo'
+    description: 'Stanza mode',
     license: 'MIT',
   :unload
 }

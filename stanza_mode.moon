@@ -3,11 +3,12 @@
 
 {
   lexer: bundle_load('stanza_lexer')
+  -- api: bundle_load('api')
+  -- completers: { 'in_buffer', 'api' }
 
   comment_syntax: ';'
 
   default_config:
-    word_pattern: r'[^ %t0-9~!@#$%%^*+-=/.:&|<>][^ %t,.:&|<>%[%]{}()]*'
     indent: 3
 
   indentation: {
