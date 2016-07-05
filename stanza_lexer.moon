@@ -1,40 +1,6 @@
 -- Copyright 2016 Jake Russo
 -- License: MIT
 
-sub_lex_capture = (subject, cur_pos, mode_name, sub_text) ->
-  sub_start_pos = cur_pos - #sub_text
-  m = mode.by_name mode_name
-  sub_text, sub_start_pos, ret = sub_lex_capture_start sub_text, sub_start_pos, cur_pos
-  append ret, sub_start_pos
-
-  if not m or not m.lexer
-    append ret, 'embedded'
-    append ret, cur_pos
-  else
-    append ret, m.lexer(sub_text, nil, sub_lexing: true)
-    append ret, "#{mode_name}|embedded"
-
-  unpack ret
-
-pattern_sub_lex_capture = (subject, cur_pos, mode_name, mode_style, sub_text) ->
-  real_sub_start_pos = cur_pos - #sub_text
-  start_pos = real_sub_start_pos - #mode_name
-  m = mode.by_name mode_name
-  sub_text, sub_start_pos, ret = sub_lex_capture_start sub_text, real_sub_start_pos, cur_pos
-
-  tinsert ret, 2, real_sub_start_pos
-  tinsert ret, 2, mode_style
-  tinsert ret, 2, start_pos
-
-  append ret, sub_start_pos
-
-  if not m or not m.lexer
-    append ret, 'embedded'
-    append ret, cur_pos
-  else
-    append ret, m.lexer(sub_text, nil, sub_lexing: true)
-    append ret, "#{mode_name}|embedded"
-
 howl.aux.lpeg_lexer ->
 
   word = (...) ->
@@ -141,32 +107,6 @@ howl.aux.lpeg_lexer ->
     lotypes, ref, ptr, types
   }
 
-  lobody = any {
-    comment,
-    V'string',
-    V'deref',
-    V'fndel',
-    char,
-    number,
-    declarator,
-    wordop,
-    modifier,
-    ref,
-    ptr,
-    fdecl,
-    decl,
-    keyword,
-    lokeyword,
-    functions,
-    lofuncs,
-    constant,
-    types,
-    lotypes,
-    unknown,
-    operator,
-    identifier
-  }
-
   P {
     'all'
 
@@ -187,6 +127,32 @@ howl.aux.lpeg_lexer ->
       functions,
       constant,
       types,
+      unknown,
+      operator,
+      identifier
+    }
+
+    lobody: any {
+      comment,
+      V'string',
+      V'deref',
+      V'fndel',
+      char,
+      number,
+      declarator,
+      wordop,
+      modifier,
+      ref,
+      ptr,
+      fdecl,
+      decl,
+      keyword,
+      lokeyword,
+      functions,
+      lofuncs,
+      constant,
+      types,
+      lotypes,
       unknown,
       operator,
       identifier
@@ -226,16 +192,10 @@ howl.aux.lpeg_lexer ->
       c('special', P'lostanza'), ws^1,
       c('keyword', P'defn'), ws^1,
       c('fdecl', ident), ws^1,
-      P'(', sub_lex_by_inline('embedded', ')', loparams), P')', ws^1,
-      c('operator', P'->'), ws^1, sub_lex_by_inline('embedded', ' :', loparams), ws^1,
+      P'(', sub_lex_by_inline('embedded', scan_until(')'), loparams), P')', ws^1,
+      c('operator', P'->'), ws^1, sub_lex_by_inline('embedded', scan_until(' :'), loparams), ws^1,
       c('operator', P':'),
-      -- Here's where I want to use lobody to provide special syntax/keywords and
-      -- also use embedded coloring to help signify to the users that you are in a separate
-      -- sub-language from Stanza
-
-      -- sub_lex_by_pattern(lobody^1, 'embedded', scan_through_indented!)
-      Cmt(C(any({ws, lobody})^1) * C(scan_through_indented!), sub_lex_capture)
-      -- sub_lex_match_time('embedded', scan_through_indented!)
+      sub_lex_by_inline('embedded', scan_through_indented!, V'lobody')
     }
 
   }
